@@ -6,5 +6,6 @@
     "ApplicableVersion": "any",
     "Punchline": "-",
     "RepoUrl": "https://github.com/",
-    "AcceptsFeedback": false
+    "AcceptsFeedback": false,
+    "DalamudApiLevel": 11
 }

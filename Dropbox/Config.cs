@@ -17,5 +17,11 @@ namespace Dropbox
         public bool PermanentActive = false;
         public bool Active = false;
         public List<TradeQueueEntry> TradeQueue = [];
+        public int TradeDelay = 12;
+        public int TradeThrottle = 3000;
+        public bool Busy = false;
+        public bool WhitelistMode = false;
+        public Dictionary<ulong, string> WhitelistedAccounts = [];
+        public bool AutoClear = false;
     }
 }

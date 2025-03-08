@@ -28,7 +28,7 @@ public unsafe class Memory
     public void SafeOfferItemTrade(InventoryType type, ushort slot)
     {
         nint TradeAddress = ((nint)UIModule.Instance()->GetAgentModule()->GetAgentByInternalId(AgentId.Trade)) + 40;
-        if(Utils.GetSlot(type, slot).ItemID == 0)
+        if(Utils.GetSlot(type, slot).ItemId == 0)
         {
             throw new InvalidOperationException($"Attempted to use trade on empty slot {type}, {slot}");
         }

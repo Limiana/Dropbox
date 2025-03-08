@@ -1,4 +1,4 @@
-﻿using ClickLib.Clicks;
+﻿
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Game.Text;
@@ -7,35 +7,45 @@ using ECommons.SimpleGui;
 using ECommons.Throttlers;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using ECommons.Configuration;
 using ECommons.Automation;
 using Dalamud.Game.Addon.Lifecycle;
 using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
+using ECommons.EzSharedDataManager;
+using ECommons.Automation.LegacyTaskManager;
+using ECommons.UIHelpers.AddonMasterImplementations;
+using ECommons.Automation.UIInput;
+using ECommons.Reflection;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using ECommons.GameFunctions;
+using ECommons.GameHelpers;
 
 namespace Dropbox
 {
     public unsafe class Dropbox : IDalamudPlugin
     {
         public string Name => "Dropbox";
-        string TradePartnerName = "";
+        public string TradePartnerName = "";
         internal static Config C;
         internal static Dropbox P;
         const string ThrottleName = "TradeArtificialThrottle";
         public uint[] TradeableItems;
         public Memory Memory;
+        public bool[] IsActive;
 
         internal TaskManager TaskManager;
 
         string TradeText => Svc.Data.GetExcelSheet<Addon>().GetRow(102223).Text.ExtractText();
 
-        public Dropbox(DalamudPluginInterface i)
+        public Dropbox(IDalamudPluginInterface i)
         {
             P = this;
-            ECommonsMain.Init(i, this);
+            ECommonsMain.Init(i, this, Module.DalamudReflector);
             TaskManager = new()
             {
                 AbortOnTimeout = true,
+                TimeLimitMS = 60000,
             };
             Svc.Framework.Update += Framework_Update;
             C = EzConfig.Init<Config>();
@@ -49,6 +59,9 @@ namespace Dropbox
             Svc.AddonLifecycle.RegisterListener(AddonEvent.PostRequestedUpdate, "ContextMenu", ContextMenuHandler);
             TradeableItems = Svc.Data.GetExcelSheet<Item>().Where(x => !x.IsUntradable).Select(x => x.RowId).ToArray();
             Memory = new();
+            IsActive = EzSharedData.GetOrCreate<bool[]>("Dropbox.IsProcessingTasks", [false]);
+            new IPCProvider();
+            DalamudReflector.RegisterOnInstalledPluginsChangedEvents(() => PluginLog.Information("Changed!"));
         }
 
         private void ContextMenuHandler(AddonEvent type, AddonArgs args)
@@ -74,7 +87,7 @@ namespace Dropbox
             }*/
         }
 
-        private void Chat_ChatMessage(XivChatType type, uint senderId, ref SeString sender, ref SeString message, ref bool isHandled)
+        private void Chat_ChatMessage(XivChatType type, int senderId, ref SeString sender, ref SeString message, ref bool isHandled)
         {
             if (((int)type).EqualsAny(313, 569))
             {
@@ -87,7 +100,7 @@ namespace Dropbox
                         if (payload.Type == PayloadType.Player)
                         {
                             var playerPayload = (PlayerPayload)payload;
-                            var senderNameWithWorld = $"{playerPayload.PlayerName}@{playerPayload.World.Name}";
+                            var senderNameWithWorld = $"{playerPayload.PlayerName}@{playerPayload.World.ValueNullable?.Name}";
                             PluginLog.Debug($"Name trade out: {senderNameWithWorld}");
                             TradePartnerName = senderNameWithWorld;
                             if(!C.Silent) Notify.Info($"You begin trade with {TradePartnerName}.");
@@ -112,9 +125,27 @@ namespace Dropbox
             }
         }
 
+        private bool YesAlreadyStopRequired = false;
         private void Framework_Update(object framework)
         {
-            if((C.Active || TaskManager.IsBusy) && Svc.Condition[ConditionFlag.TradeOpen])
+            if (TaskManager.IsBusy)
+            {
+                if(EzSharedData.TryGet<HashSet<string>>("YesAlready.StopRequests", out var data))
+                {
+                    YesAlreadyStopRequired = true;
+                    data.Add(Svc.PluginInterface.InternalName);
+                }
+            }
+            else if(YesAlreadyStopRequired)
+            {
+                if (EzSharedData.TryGet<HashSet<string>>("YesAlready.StopRequests", out var data))
+                {
+                    data.Remove(Svc.PluginInterface.InternalName);
+                }
+                YesAlreadyStopRequired = false;
+            }
+            IsActive[0] = TaskManager.IsBusy;
+            if((Utils.CanAutoTrade() || TaskManager.IsBusy) && Svc.Condition[ConditionFlag.TradeOpen])
             {
                 {
                     if (TryGetAddonByName<AtkUnitBase>("Trade", out var addon) && IsAddonReady(addon))
@@ -148,7 +179,7 @@ namespace Dropbox
                             if (EzThrottler.Check(ThrottleName) && FrameThrottler.Check(ThrottleName) && tradeButton->IsEnabled && EzThrottler.Throttle("Delay", 200) && EzThrottler.Throttle("ReadyTrade", 2000))
                             {
                                 PluginLog.Information($"Locking trade");
-                                if (!C.NoOp) new ClickGeneric("Trade", (nint)addon).ClickButton(tradeButton);
+                                if (!C.NoOp) tradeButton->ClickAddonButton(addon);
                             }
                         }
                         else
@@ -168,7 +199,7 @@ namespace Dropbox
                     if (addon != null && EzThrottler.Throttle("Delay", 200) && EzThrottler.Throttle("SelectYes", 2000))
                     {
                         PluginLog.Information($"Confirming trade");
-                        if (!C.NoOp) ClickSelectYesNo.Using((nint)addon).Yes();
+                        if (!C.NoOp) new AddonMaster.SelectYesno(addon).Yes();
                     }
                 }
             }
@@ -180,7 +211,7 @@ namespace Dropbox
             for(int i = 0; i < 5; i++)
             {
                 var slot = addon->UldManager.NodeList[15 + i];
-                if (slot->GetAsAtkComponentNode()->Component->UldManager.NodeList[0]->IsVisible)
+                if (slot->GetAsAtkComponentNode()->Component->UldManager.NodeList[0]->IsVisible())
                 {
                     ret++;
                 }
@@ -194,7 +225,7 @@ namespace Dropbox
             var inv = InventoryManager.Instance()->GetInventoryContainer(InventoryType.HandIn);
             for (int i = 0; i < 5; i++)
             {
-                if (inv->GetInventorySlot(i)->ItemID != 0) ret++;
+                if (inv->GetInventorySlot(i)->ItemId != 0) ret++;
             }
             if (TryGetAddonByName<byte>("InputNumeric", out _)) ret--;
             return ret;
@@ -213,10 +244,43 @@ namespace Dropbox
                     ImGui.SetNextItemWidth(150f);
                     ImGui.SliderInt("Auto-confirm on incoming gil offering, >=", ref C.AutoConfirmGil, 0, 1000000);
                     ImGui.Checkbox($"Silent operation", ref C.Silent);
+                    ImGuiEx.SetNextItemWidthScaled(100);
+                    ImGui.SliderInt("Delay between trades, frames", ref C.TradeDelay, 4, 60, null, ImGuiSliderFlags.Logarithmic);
+                    ImGuiEx.SetNextItemWidthScaled(100);
+                    ImGui.SliderInt("Trade open command throttle, ms", ref C.TradeThrottle, 1000, 5000);
+                    //ImGui.Checkbox("Enable busy while trading", ref C.Busy);
+                    ImGui.Checkbox("Auto-clear focus target when finished trade", ref C.AutoClear);
                     ImGui.Separator();
                     ImGui.Checkbox($"Not operational", ref C.NoOp);
                 }, null, true),
                 ("Item Trade Queue", ItemQueueUI.Draw, null, true),
+                ("Whitelist", () =>
+                {
+                    ImGui.Checkbox("Accept trades only from whitelisted accounts", ref C.WhitelistMode);
+                    if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Plus, "Add target", Svc.Targets.Target is IPlayerCharacter))
+                    {
+                        var pc = (IPlayerCharacter)Svc.Targets.Target;
+                        C.WhitelistedAccounts[pc.Struct()->AccountId] = pc.GetNameWithWorld();
+                    }
+                    if(ImGuiEx.BeginDefaultTable(["~Account", "##control"], false))
+                    {
+                        foreach(var x in C.WhitelistedAccounts)
+                        {
+                            ImGui.PushID(x.Key.ToString());
+                            ImGui.TableNextRow();
+                            ImGui.TableNextColumn();
+                            ImGuiEx.TextV($"Account {x.Key} ({x.Value})");
+                            ImGui.TableNextColumn();
+                            if(ImGuiEx.IconButton(FontAwesomeIcon.Trash))
+                            {
+                                new TickScheduler(() => C.WhitelistedAccounts.Remove(x.Key));
+                            }
+                            ImGui.PopID();
+                        }
+
+                        ImGui.EndTable();
+                    }
+                }, C.WhitelistMode?null:ImGuiColors.DalamudGrey, true),
                 InternalLog.ImGuiTab(),
                 ("Debug", () =>
                 {
@@ -278,6 +342,7 @@ namespace Dropbox
             Svc.Framework.Update -= Framework_Update;
             Svc.Chat.ChatMessage -= Chat_ChatMessage;
             Svc.AddonLifecycle.UnregisterListener(AddonEvent.PostRequestedUpdate, "ContextMenu", ContextMenuHandler);
+            IsActive[0] = false;
             ECommonsMain.Dispose();
             P = null;
             C = null;

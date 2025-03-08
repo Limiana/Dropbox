@@ -15,36 +15,22 @@ namespace Dropbox
     {
         internal static bool IsActive => P.TaskManager.IsBusy;
 
-        internal static bool GenericThrottle(bool rethrottle = false) => FrameThrottler.Throttle("TaskThrottle", 4, rethrottle);
+        internal static bool GenericThrottle(bool rethrottle = false) => FrameThrottler.Throttle("TaskThrottle", Math.Max(2, C.TradeDelay), rethrottle);
 
         internal static volatile bool ConfirmAllowed = false;
         public static int MaxGil = 1000000;
-
-        internal static void Enqueue(TradeQueueEntry entry)
-        {
-            P.TaskManager.Enqueue(delegate { ConfirmAllowed = false; }, "ConfirmAllowed = false");
-            P.TaskManager.Enqueue(() => UseTradeOn(entry.Player), $"UseTradeOn({entry.Player})");
-            P.TaskManager.Enqueue(WaitUntilTradeOpen);
-            P.TaskManager.Enqueue(OpenGilInput);
-            P.TaskManager.Enqueue(() => SetNumericInput(entry.Gil), $"SetNumericInput({entry.Gil})");
-            P.TaskManager.DelayNext(15, true);
-            P.TaskManager.Enqueue(delegate { ConfirmAllowed = true; }, "ConfirmAllowed = true");
-            P.TaskManager.Enqueue(WaitUntilTradeNotOpen);
-            P.TaskManager.Enqueue(() => C.TradeQueue.RemoveAll(x => x.GUID == entry.GUID));
-            P.TaskManager.DelayNext(15, true);
-        }
 
         internal static bool? WaitUntilTradeOpen() => Svc.Condition[ConditionFlag.TradeOpen];
         internal static bool? WaitUntilTradeNotOpen() => !Svc.Condition[ConditionFlag.TradeOpen];
 
         internal static bool? UseTradeOn(string player)
         {
-            var targetPlayer = Svc.Objects.Where(x => x is PlayerCharacter pc && pc.IsTargetable && new Sender(pc).ToString() ==  player).FirstOrDefault();
+            var targetPlayer = Svc.Objects.Where(x => x is IPlayerCharacter pc && pc.IsTargetable && new Sender(pc).ToString() ==  player).FirstOrDefault();
             if(targetPlayer != null)
             {
                 if(Svc.Targets.Target?.Address == targetPlayer.Address)
                 {
-                    if(GenericThrottle() && EzThrottler.Throttle("TradeOpen", 3000))
+                    if(GenericThrottle() && EzThrottler.Throttle("TradeOpen", C.TradeThrottle))
                     {
                         Chat.Instance.SendMessage("/trade");
                         return true;
