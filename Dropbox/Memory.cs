@@ -11,6 +11,9 @@ using System.Threading.Tasks;
 namespace Dropbox;
 public unsafe class Memory
 {
+    public nint* MyAccountData = (nint*)Svc.SigScanner.GetStaticAddressFromSig("48 8B 3D ?? ?? ?? ?? 48 85 FF 74 69");
+    public ulong MyAccountId => *(ulong*)(*MyAccountData + 8);
+
     delegate void OfferItemTrade(nint tradeAddress, ushort slot, InventoryType type);
     [EzHook("48 89 6C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 83 B9 ?? ?? ?? ?? ?? 41 8B F0", false)]
     EzHook<OfferItemTrade> OfferItemTradeHook;

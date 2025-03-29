@@ -11,12 +11,17 @@ using System.Threading.Tasks;
 namespace Dropbox;
 public static unsafe class Utils
 {
+    public static ulong GetRealAccountId(this IPlayerCharacter character)
+    {
+        return (uint)((Player.Character->AccountId ^ character.Character()->AccountId) >> 31) ^ P.Memory.MyAccountId;
+    }
+
     public static bool CanAutoTrade()
     {
         if(!C.Active) return false;
         if(C.WhitelistMode)
         {
-            if(P.TradePartnerName != "" && Svc.Objects.OfType<IPlayerCharacter>().TryGetFirst(x => x.GetNameWithWorld() == P.TradePartnerName, out var pc) && C.WhitelistedAccounts.ContainsKey(pc.Struct()->AccountId))
+            if(P.TradePartnerName != "" && Svc.Objects.OfType<IPlayerCharacter>().TryGetFirst(x => x.GetNameWithWorld() == P.TradePartnerName, out var pc) && C.WhitelistedAccounts.ContainsKey(pc.GetRealAccountId()))
             {
                 return true;
             }

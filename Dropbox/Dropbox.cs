@@ -260,7 +260,7 @@ namespace Dropbox
                     if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Plus, "Add target", Svc.Targets.Target is IPlayerCharacter))
                     {
                         var pc = (IPlayerCharacter)Svc.Targets.Target;
-                        C.WhitelistedAccounts[pc.Struct()->AccountId] = pc.GetNameWithWorld();
+                        C.WhitelistedAccounts[pc.GetRealAccountId()] = pc.GetNameWithWorld();
                     }
                     if(ImGuiEx.BeginDefaultTable(["~Account", "##control"], false))
                     {
