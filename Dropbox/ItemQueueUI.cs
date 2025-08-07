@@ -132,7 +132,7 @@ public unsafe static class ItemQueueUI
             {
                 if(ThreadLoadImageHandler.TryGetIconTextureWrap(ExcelItemHelper.Get(x.Descriptor.Id)?.Icon ?? 0, false, out var tex)) 
                 {
-                    ImGui.Image(tex.ImGuiHandle, new Vector2(24));
+                    ImGui.Image(tex.Handle, new Vector2(24));
                 }
             }));
             Entries.Add(new("Quantity", () =>

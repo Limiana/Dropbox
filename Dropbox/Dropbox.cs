@@ -233,26 +233,27 @@ namespace Dropbox
 
         void Draw()
         {
+            void MainTab()
+            {
+                ImGui.Checkbox($"Enable auto-accept trades", ref C.Active);
+                ImGui.Checkbox($"Save enabled state through game restarts", ref C.PermanentActive);
+                ImGui.SetNextItemWidth(200f);
+                ImGuiEx.SliderIntAsFloat("Delay before accepting, s", ref C.Delay, 0, 10000);
+                ImGui.Checkbox("Auto-confirm once 5 item slots are filled", ref C.AutoConfirm5);
+                ImGui.SetNextItemWidth(150f);
+                ImGui.SliderInt("Auto-confirm on incoming gil offering, >=", ref C.AutoConfirmGil, 0, 1000000);
+                ImGui.Checkbox($"Silent operation", ref C.Silent);
+                ImGuiEx.SetNextItemWidthScaled(100);
+                ImGui.SliderInt("Delay between trades, frames", ref C.TradeDelay, 4, 60, flags:ImGuiSliderFlags.Logarithmic);
+                ImGuiEx.SetNextItemWidthScaled(100);
+                ImGui.SliderInt("Trade open command throttle, ms", ref C.TradeThrottle, 1000, 5000);
+                //ImGui.Checkbox("Enable busy while trading", ref C.Busy);
+                ImGui.Checkbox("Auto-clear focus target when finished trade", ref C.AutoClear);
+                ImGui.Separator();
+                ImGui.Checkbox($"Not operational", ref C.NoOp);
+            }
             ImGuiEx.EzTabBar("Tabs",
-                ("Main", () =>
-                {
-                    ImGui.Checkbox($"Enable auto-accept trades", ref C.Active);
-                    ImGui.Checkbox($"Save enabled state through game restarts", ref C.PermanentActive);
-                    ImGui.SetNextItemWidth(200f);
-                    ImGuiEx.SliderIntAsFloat("Delay before accepting, s", ref C.Delay, 0, 10000);
-                    ImGui.Checkbox("Auto-confirm once 5 item slots are filled", ref C.AutoConfirm5);
-                    ImGui.SetNextItemWidth(150f);
-                    ImGui.SliderInt("Auto-confirm on incoming gil offering, >=", ref C.AutoConfirmGil, 0, 1000000);
-                    ImGui.Checkbox($"Silent operation", ref C.Silent);
-                    ImGuiEx.SetNextItemWidthScaled(100);
-                    ImGui.SliderInt("Delay between trades, frames", ref C.TradeDelay, 4, 60, null, ImGuiSliderFlags.Logarithmic);
-                    ImGuiEx.SetNextItemWidthScaled(100);
-                    ImGui.SliderInt("Trade open command throttle, ms", ref C.TradeThrottle, 1000, 5000);
-                    //ImGui.Checkbox("Enable busy while trading", ref C.Busy);
-                    ImGui.Checkbox("Auto-clear focus target when finished trade", ref C.AutoClear);
-                    ImGui.Separator();
-                    ImGui.Checkbox($"Not operational", ref C.NoOp);
-                }, null, true),
+                ("Main", MainTab, null, true),
                 ("Item Trade Queue", ItemQueueUI.Draw, null, true),
                 ("Whitelist", () =>
                 {
@@ -314,7 +315,7 @@ namespace Dropbox
             {
                 try
                 {
-                    var addon = (AtkUnitBase*)Svc.GameGui.GetAddonByName("SelectYesno", i);
+                    var addon = (AtkUnitBase*)Svc.GameGui.GetAddonByName("SelectYesno", i).Address;
                     if (addon == null) return null;
                     if (IsAddonReady(addon))
                     {
