@@ -257,24 +257,24 @@ namespace Dropbox
                 ("Item Trade Queue", ItemQueueUI.Draw, null, true),
                 ("Whitelist", () =>
                 {
-                    ImGui.Checkbox("Accept trades only from whitelisted accounts", ref C.WhitelistMode);
+                    ImGui.Checkbox("Accept trades only from whitelisted characters", ref C.WhitelistMode);
                     if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Plus, "Add target", Svc.Targets.Target is IPlayerCharacter))
                     {
                         var pc = (IPlayerCharacter)Svc.Targets.Target;
-                        C.WhitelistedAccounts[pc.GetRealAccountId()] = pc.GetNameWithWorld();
+                        C.WhitelistedCharacters[pc.Struct()->ContentId] = pc.GetNameWithWorld();
                     }
-                    if(ImGuiEx.BeginDefaultTable(["~Account", "##control"], false))
+                    if(ImGuiEx.BeginDefaultTable(["~Character", "##control"], false))
                     {
-                        foreach(var x in C.WhitelistedAccounts)
+                        foreach(var x in C.WhitelistedCharacters)
                         {
                             ImGui.PushID(x.Key.ToString());
                             ImGui.TableNextRow();
                             ImGui.TableNextColumn();
-                            ImGuiEx.TextV($"Account {x.Key} ({x.Value})");
+                            ImGuiEx.TextV($"Character {x.Key} ({x.Value})");
                             ImGui.TableNextColumn();
                             if(ImGuiEx.IconButton(FontAwesomeIcon.Trash))
                             {
-                                new TickScheduler(() => C.WhitelistedAccounts.Remove(x.Key));
+                                new TickScheduler(() => C.WhitelistedCharacters.Remove(x.Key));
                             }
                             ImGui.PopID();
                         }

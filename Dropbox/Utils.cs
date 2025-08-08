@@ -21,7 +21,7 @@ public static unsafe class Utils
         if(!C.Active) return false;
         if(C.WhitelistMode)
         {
-            if(P.TradePartnerName != "" && Svc.Objects.OfType<IPlayerCharacter>().TryGetFirst(x => x.GetNameWithWorld() == P.TradePartnerName, out var pc) && C.WhitelistedAccounts.ContainsKey(pc.GetRealAccountId()))
+            if(P.TradePartnerName != "" && Svc.Objects.OfType<IPlayerCharacter>().TryGetFirst(x => x.GetNameWithWorld() == P.TradePartnerName, out var pc) && C.WhitelistedCharacters.ContainsKey(pc.Struct()->ContentId))
             {
                 return true;
             }
