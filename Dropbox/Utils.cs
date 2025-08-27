@@ -16,9 +16,22 @@ public static unsafe class Utils
         return (uint)((Player.Character->AccountId ^ character.Character()->AccountId) >> 31) ^ P.Memory.MyAccountId;
     }
 
+    public static void UpdateCharaWhitelistNames()
+    {
+        foreach(var x in Svc.Objects.OfType<IPlayerCharacter>())
+        {
+            var id = x.Struct()->ContentId;
+            if(C.WhitelistedCharacters.ContainsKey(id))
+            {
+                C.WhitelistedCharacters[id] = x.GetNameWithWorld();
+            }
+        }
+    }
+
     public static bool CanAutoTrade()
     {
         if(!C.Active) return false;
+        if(P.StopRequests.Count > 0) return false;
         if(C.WhitelistMode)
         {
             if(P.TradePartnerName != "" && Svc.Objects.OfType<IPlayerCharacter>().TryGetFirst(x => x.GetNameWithWorld() == P.TradePartnerName, out var pc) && C.WhitelistedCharacters.ContainsKey(pc.Struct()->ContentId))

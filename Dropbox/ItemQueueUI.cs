@@ -14,6 +14,14 @@ public unsafe static class ItemQueueUI
     static string Filter = "";
     public static void Draw()
     {
+        if(P.StopRequests.Count > 0)
+        {
+            ImGuiEx.TextWrapped(EColor.RedBright, $"Plugin is paused by {P.StopRequests.Print()}");
+            if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Ban, "Resume"))
+            {
+                P.StopRequests.Clear();
+            }
+        }
         if (P.TaskManager.IsBusy)
         {
             if (ImGui.Button("Stop"))
