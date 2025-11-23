@@ -40,6 +40,8 @@ public unsafe class Dropbox : IDalamudPlugin
     public bool[] IsActive;
     public HashSet<string> StopRequests;
     public FileDialogManager FileDM;
+    public string OpenTabName = null;
+    public IPCProvider IPCProvider;
 
     internal TaskManager TaskManager;
 
@@ -59,7 +61,7 @@ public unsafe class Dropbox : IDalamudPlugin
         Svc.Framework.Update += Framework_Update;
         C = EzConfig.Init<Config>();
         EzConfigGui.Init(Draw);
-        EzCmd.Add("/dropbox", EzConfigGui.Open);
+        EzCmd.Add("/dropbox", OnCommand);
         Svc.Chat.ChatMessage += Chat_ChatMessage;
         if(!C.PermanentActive)
         {
@@ -68,10 +70,22 @@ public unsafe class Dropbox : IDalamudPlugin
         Svc.AddonLifecycle.RegisterListener(AddonEvent.PostRequestedUpdate, "ContextMenu", ContextMenuHandler);
         TradeableItems = Svc.Data.GetExcelSheet<Item>().Where(x => !x.IsUntradable).Select(x => x.RowId).ToArray();
         Memory = new();
-        new IPCProvider();
+        this.IPCProvider = new IPCProvider();
         DalamudReflector.RegisterOnInstalledPluginsChangedEvents(() => PluginLog.Information("Changed!"));
         ProperOnLogin.RegisterAvailable(Utils.UpdateCharaWhitelistNames, true);
         FileDM = new();
+    }
+
+    private void OnCommand(string command, string arguments)
+    {
+        if(arguments == "OpenTradeTab")
+        {
+            IPCProvider.OpenUI();
+        }
+        else
+        {
+            EzConfigGui.Open();
+        }
     }
 
     private void ContextMenuHandler(AddonEvent type, AddonArgs args)
@@ -264,7 +278,7 @@ public unsafe class Dropbox : IDalamudPlugin
             ImGui.Separator();
             ImGui.Checkbox($"Not operational", ref C.NoOp);
         }
-        ImGuiEx.EzTabBar("Tabs",
+        ImGuiEx.EzTabBar("Tabs", null, OpenTabName,
             ("Main", MainTab, null, true),
             ("Item Trade Queue", ItemQueueUI.Draw, null, true),
             ("Whitelist", () =>
