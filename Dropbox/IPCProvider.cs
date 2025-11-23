@@ -1,5 +1,7 @@
 ﻿using Dalamud.Game.ClientState.Objects.SubKinds;
+using ECommons.Configuration;
 using ECommons.EzIpcManager;
+using ECommons.SimpleGui;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using System;
 using System.Collections.Generic;
@@ -24,6 +26,18 @@ public unsafe class IPCProvider
         {
             ItemQueueUI.BeginTrading();
         }
+    }
+    [EzIPC] public void OpenUI()
+    {
+        EzConfigGui.Window.IsOpen = true;
+        EzConfigGui.Window.Collapsed = false;
+        EzConfigGui.Window.CollapsedCondition = ImGuiCond.Always;
+        P.OpenTabName = "Item Trade Queue";
+        new TickScheduler(() =>
+        {
+            P.OpenTabName = null;
+            EzConfigGui.Window.Collapsed = null;
+        }, 500);
     }
     [EzIPC] public int GetItemQuantity(uint id, bool hq)
     {
