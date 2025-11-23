@@ -25,6 +25,8 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
+using Dalamud.Game;
 
 namespace Dropbox;
 
@@ -43,7 +45,19 @@ public unsafe class Dropbox : IDalamudPlugin
 
     internal TaskManager TaskManager;
 
-    private string TradeText => Svc.Data.GetExcelSheet<Addon>().GetRow(102223).Text.ExtractText();
+    private string TradeText => Svc.Data.GetExcelSheet<Addon>().GetRow(102223).Text.GetText();
+    private string TradeCompleteLog => Svc.Data.GetExcelSheet<LogMessage>().GetRow(38).Text.GetText();
+    private string TradeCanceledLog => Svc.Data.GetExcelSheet<LogMessage>().GetRow(36).Text.GetText();
+    private string TradeCanceledGilFullSelfLog => Svc.Data.GetExcelSheet<LogMessage>().GetRow(46).Text.GetText();
+    private string TradeCanceledGilFullOtherLog => Svc.Data.GetExcelSheet<LogMessage>().GetRow(47).Text.GetText();
+
+    private Regex TradeRequestLogRegex
+    {
+        get
+        {
+            return field ??= GetTradeRequestLogRegex();
+        }
+    }
 
     public Dropbox(IDalamudPluginInterface i)
     {
@@ -74,6 +88,30 @@ public unsafe class Dropbox : IDalamudPlugin
         FileDM = new();
     }
 
+    private static Regex GetTradeRequestLogRegex()
+    {
+        string pattern;
+
+        switch (Svc.Data.Language)
+        {
+            case ClientLanguage.Japanese:
+                pattern = @"にトレードを申し込みました。$|からトレードを申し込まれました。$";
+                break;
+            case ClientLanguage.German:
+                pattern = @"^Du hast .*? einen Handel angeboten\.$|möchte mit dir handeln\.$";
+                break;
+            case ClientLanguage.French:
+                pattern = @"^Vous proposez un échange|vous propose un échange\.$";
+                break;
+            case ClientLanguage.English:
+            default:
+                pattern = @"^Trade request sent to|wishes to trade with you\.$";
+                break;
+        }
+
+        return new Regex(pattern, RegexOptions.Compiled);
+    }
+
     private void ContextMenuHandler(AddonEvent type, AddonArgs args)
     {
         /*if (C.Active)
@@ -102,7 +140,7 @@ public unsafe class Dropbox : IDalamudPlugin
         if(((int)type).EqualsAny(313, 569))
         {
             var mStr = message.ToString();
-            if(mStr.StartsWith("Trade request sent to") || mStr.EndsWith("wishes to trade with you."))
+            if(TradeRequestLogRegex.Match(mStr).Success)
             {
                 Utils.UpdateCharaWhitelistNames();
                 PluginLog.Debug("Detected trade request");
@@ -123,12 +161,12 @@ public unsafe class Dropbox : IDalamudPlugin
         if(type == XivChatType.SystemMessage)
         {
             var msg = message.ToString();
-            if(msg.Equals("Trade complete."))
+            if(msg.Equals(TradeCompleteLog))
             {
                 if(!C.Silent) Notify.Info($"You finished trade with {TradePartnerName}");
                 TradePartnerName = "";
             }
-            else if(msg.Equals("Trade canceled."))
+            else if(msg.Equals(TradeCanceledLog) || msg.Equals(TradeCanceledGilFullSelfLog) ||  msg.Equals(TradeCanceledGilFullOtherLog))
             {
                 if(!C.Silent) Notify.Info("Trade canceled");
                 TradePartnerName = "";
@@ -167,7 +205,7 @@ public unsafe class Dropbox : IDalamudPlugin
 
                     if(C.AutoConfirmGil > 0)
                     {
-                        var gilOffered = MemoryHelper.ReadSeString(&addon->UldManager.NodeList[6]->GetAsAtkTextNode()->NodeText).ExtractText().ReplaceByChar(" ,.", "", true);
+                        var gilOffered = MemoryHelper.ReadSeString(&addon->UldManager.NodeList[6]->GetAsAtkTextNode()->NodeText).GetText().ReplaceByChar(" ,.", "", true);
                         if(uint.TryParse(gilOffered, out var gil) && gil >= C.AutoConfirmGil)
                         {
                             //InternalLog.Information($"Gil is 1m");
@@ -370,7 +408,7 @@ public unsafe class Dropbox : IDalamudPlugin
                 if(IsAddonReady(addon))
                 {
                     var textNode = addon->UldManager.NodeList[15]->GetAsAtkTextNode();
-                    var text = MemoryHelper.ReadSeString(&textNode->NodeText).ExtractText();
+                    var text = MemoryHelper.ReadSeString(&textNode->NodeText).GetText();
                     if(text.EqualsAny(s))
                     {
                         PluginLog.Verbose($"SelectYesno {s.Print()} addon {i}");
