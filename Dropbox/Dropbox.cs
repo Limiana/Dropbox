@@ -175,9 +175,7 @@ public unsafe class Dropbox : IDalamudPlugin
             {
                 if(TryGetAddonByName<AtkUnitBase>("Trade", out var addon) && IsAddonReady(addon))
                 {
-                    //InternalLog.Information($"My: {GetMyTradeItemCount()}, other: {GetOtherTradeItemCount(addon)}");
-                    var check = addon->UldManager.NodeList[31]->GetAsAtkComponentNode()->Component->UldManager.NodeList[0]->GetAsAtkImageNode();
-                    var ready = check->AtkResNode.Color.A == 0xFF;
+                    var ready = TradeDetectionManager.PartnerReadyForTrade;
 
                     if(C.AutoConfirmGil > 0)
                     {
