@@ -94,7 +94,7 @@ public unsafe class Dropbox : IDalamudPlugin
     {
         string pattern;
 
-        switch (Svc.Data.Language)
+        switch(Svc.Data.Language)
         {
             case ClientLanguage.Japanese:
                 pattern = @"にトレードを申し込みました。$|からトレードを申し込まれました。$";
@@ -112,6 +112,7 @@ public unsafe class Dropbox : IDalamudPlugin
         }
 
         return new Regex(pattern, RegexOptions.Compiled);
+    }
         
     private void OnCommand(string command, string arguments)
     {
