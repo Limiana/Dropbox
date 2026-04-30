@@ -11,10 +11,6 @@ using System.Threading.Tasks;
 namespace Dropbox;
 public static unsafe class Utils
 {
-    public static ulong GetRealAccountId(this IPlayerCharacter character)
-    {
-        return (uint)((Player.Character->AccountId ^ character.Character()->AccountId) >> 31) ^ P.Memory.MyAccountId;
-    }
 
     public static void UpdateCharaWhitelistNames()
     {

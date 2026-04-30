@@ -27,6 +27,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using Dalamud.Game;
+using Dalamud.Game.Chat;
 
 namespace Dropbox;
 
@@ -149,8 +150,10 @@ public unsafe class Dropbox : IDalamudPlugin
         }*/
     }
 
-    private void Chat_ChatMessage(XivChatType type, int senderId, ref SeString sender, ref SeString message, ref bool isHandled)
+    private void Chat_ChatMessage(IHandleableChatMessage cm)
     {
+        var type = cm.LogKind;
+        var message = cm.Message;
         if(((int)type).EqualsAny(313, 569))
         {
             var mStr = message.ToString();
