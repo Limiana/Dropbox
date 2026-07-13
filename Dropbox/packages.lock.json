@@ -8,6 +8,12 @@
         "resolved": "2.1.12",
         "contentHash": "Sc0PVxvgg4NQjcI8n10/VfUQBAS4O+Fw2pZrAqBdRMbthYGeogzu5+xmIGCGmsEZ/ukMOBuAqiNiB5qA3MRalg=="
       },
+      "NotificationMasterAPI": {
+        "type": "Direct",
+        "requested": "[1.0.0.4, )",
+        "resolved": "1.0.0.4",
+        "contentHash": "i9WU0oWvybpmlFkagxiCLSpBHSZlvJbBe5QMP8WaCV7dSRtZg/kQf59xxTb/BsdFN9DXEKcTQ0OCCAVe9N/qEg=="
+      },
       "ecommons": {
         "type": "Project"
       }

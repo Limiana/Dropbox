@@ -28,6 +28,8 @@ using System.IO;
 using System.Text.RegularExpressions;
 using Dalamud.Game;
 using Dalamud.Game.Chat;
+using ECommons.DalamudServices.Legacy;
+using NotificationMasterAPI;
 
 namespace Dropbox;
 
@@ -45,8 +47,8 @@ public unsafe class Dropbox : IDalamudPlugin
     public FileDialogManager FileDM;
     public string OpenTabName = null;
     public IPCProvider IPCProvider;
-
     internal TaskManager TaskManager;
+    public NotificationMasterApi NotificationMasterApi => field ??= new(Svc.PluginInterface);
 
     private string TradeText => Svc.Data.GetExcelSheet<Addon>().GetRow(102223).Text.GetText();
     private string TradeCompleteLog => Svc.Data.GetExcelSheet<LogMessage>().GetRow(38).Text.GetText();
@@ -89,6 +91,19 @@ public unsafe class Dropbox : IDalamudPlugin
         DalamudReflector.RegisterOnInstalledPluginsChangedEvents(() => PluginLog.Information("Changed!"));
         ProperOnLogin.RegisterAvailable(Utils.UpdateCharaWhitelistNames, true);
         FileDM = new();
+        Svc.Toasts.ErrorToast += Toasts_ErrorToast;
+    }
+
+    private void Toasts_ErrorToast(ref SeString message, ref bool isHandled)
+    {
+        if(Svc.Condition[ConditionFlag.TradeOpen] && this.TaskManager.IsBusy)
+        {
+            if(message.GetText(true).Contains("Trade not complete"))
+            {
+                this.TaskManager.Abort();
+                NotificationMasterApi.DisplayTrayNotification("Trade failed", "Partner's inventory space is not sufficient.");
+            }
+        }
     }
 
     private static Regex GetTradeRequestLogRegex()
@@ -152,7 +167,7 @@ public unsafe class Dropbox : IDalamudPlugin
 
     private void Chat_ChatMessage(IHandleableChatMessage cm)
     {
-        var type = cm.LogKind;
+        var type = cm.Type;
         var message = cm.Message;
         if(((int)type).EqualsAny(313, 569))
         {
@@ -444,6 +459,7 @@ public unsafe class Dropbox : IDalamudPlugin
 
     public void Dispose()
     {
+        Svc.Toasts.ErrorToast -= Toasts_ErrorToast;
         Svc.Framework.Update -= Framework_Update;
         Svc.Chat.ChatMessage -= Chat_ChatMessage;
         Svc.AddonLifecycle.UnregisterListener(AddonEvent.PostRequestedUpdate, "ContextMenu", ContextMenuHandler);
