@@ -48,7 +48,10 @@ public unsafe static class TaskAddItemsToTrade
                 P.TaskManager.Enqueue(() => TradeTask.SetNumericInput((int)amount), $"SetInputNumeric {amount}");
             }
         }
-        P.TaskManager.Enqueue(delegate { TradeTask.ConfirmAllowed = true; }, "ConfirmAllowed = true");
+        if(!C.NoConfirm)
+        {
+            P.TaskManager.Enqueue(delegate { TradeTask.ConfirmAllowed = true; }, "ConfirmAllowed = true");
+        }
         P.TaskManager.Enqueue(TradeTask.WaitUntilTradeNotOpen);
         P.TaskManager.DelayNext(Math.Max(15, C.TradeDelay), true);
     }

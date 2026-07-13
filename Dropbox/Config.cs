@@ -24,5 +24,6 @@ namespace Dropbox
         public Dictionary<ulong, string> WhitelistedAccounts = [];
         public Dictionary<ulong, string> WhitelistedCharacters = [];
         public bool AutoClear = false;
+        public bool NoConfirm = false;
     }
 }

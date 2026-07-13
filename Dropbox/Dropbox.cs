@@ -314,6 +314,7 @@ public unsafe class Dropbox : IDalamudPlugin
             ImGui.SliderInt("Trade open command throttle, ms", ref C.TradeThrottle, 1000, 5000);
             //ImGui.Checkbox("Enable busy while trading", ref C.Busy);
             ImGui.Checkbox("Auto-clear focus target when finished trade", ref C.AutoClear);
+            ImGui.Checkbox("Do not confirm outgoing trades", ref C.NoConfirm);
             ImGui.Separator();
             ImGui.Checkbox($"Not operational", ref C.NoOp);
         }
