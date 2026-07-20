@@ -134,6 +134,32 @@ public unsafe class Dropbox : IDalamudPlugin
     {
         if(arguments == "OpenTradeTab")
         {
+            P = this;
+            ECommonsMain.Init(i, this, Module.DalamudReflector);
+            TaskManager = new()
+            {
+                AbortOnTimeout = true,
+                TimeLimitMS = 60000,
+            };
+            Svc.Framework.Update += Framework_Update;
+            C = EzConfig.Init<Config>();
+            EzConfigGui.Init(Draw);
+            EzCmd.Add("/dropbox", CommandHandler, """
+                Opens the Dropbox UI.
+                /dropbox tab <tabname> - Opens the UI on a specific tab (Main, Item Trade Queue, Whitelist, Debug)
+                /dropbox toggle - Toggles the UI.
+                """);
+            Svc.Chat.ChatMessage += Chat_ChatMessage;
+            if (!C.PermanentActive)
+            {
+                C.Active = false;
+            }
+            Svc.AddonLifecycle.RegisterListener(AddonEvent.PostRequestedUpdate, "ContextMenu", ContextMenuHandler);
+            TradeableItems = Svc.Data.GetExcelSheet<Item>().Where(x => !x.IsUntradable).Select(x => x.RowId).ToArray();
+            Memory = new();
+            IsActive = EzSharedData.GetOrCreate<bool[]>("Dropbox.IsProcessingTasks", [false]);
+            new IPCProvider();
+            DalamudReflector.RegisterOnInstalledPluginsChangedEvents(() => PluginLog.Information("Changed!"));
             IPCProvider.OpenUI();
         }
         else
@@ -310,6 +336,52 @@ public unsafe class Dropbox : IDalamudPlugin
         return ret;
     }
 
+        private void CommandHandler(string command, string arguments)
+        {
+            if (string.IsNullOrWhiteSpace(arguments))
+            {
+                EzConfigGui.Open();
+                return;
+            }
+
+            var args = arguments.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+
+            if (args[0].EqualsIgnoreCase("tab"))
+            {
+                var tabArgs = arguments.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+                if (tabArgs.Length < 2)
+                {
+                    Notify.Info("Usage: /dropbox tab <tabname>");
+                    return;
+                }
+
+                string tabInput = tabArgs[1];
+                var tabList = new[] { "Main", "Item Trade Queue", "Whitelist", "Debug" };
+                var matchedTab = tabList.FirstOrDefault(t => t.Equals(tabInput, StringComparison.OrdinalIgnoreCase));
+                if (matchedTab == null)
+                {
+                    Notify.Error($"Unknown tab '{tabInput}'. Available tabs: {string.Join(", ", tabList)}");
+                    return;
+                }
+
+                OpenTab = matchedTab;
+                EzConfigGui.Open();
+                return;
+            }
+            else if (args[0].EqualsIgnoreCase("toggle"))
+            {
+                EzConfigGui.Toggle();
+                return;
+            }
+            Notify.Error($"Invalid command: {arguments}");
+        }
+
+        private string OpenTab = null;
+
+        void Draw()
+        {
+            ImGuiEx.EzTabBar("Tabs", null, OpenTab,
+                ("Main", () =>
     private void Draw()
     {
         FileDM.Draw();
@@ -397,6 +469,12 @@ public unsafe class Dropbox : IDalamudPlugin
                         }
                         ImGui.PopID();
                     }
+                }, ImGuiColors.DalamudGrey, true)
+            );
+            OpenTab = null;
+        }
+
+        internal static AtkUnitBase* GetSpecificYesno(params string[] s)
 
                     ImGui.EndTable();
                 }
